@@ -4,7 +4,7 @@ import numpy as np
 from mlir_egglog.egglog_optimizer import compile
 from mlir_egglog.jit_engine import JITEngine
 from egglog import rewrite, ruleset, RewriteOrRule, i64, f64
-from mlir_egglog.term_ir import Term, Add
+from mlir_egglog.term_ir import Term
 from mlir_egglog.optimization_rules import basic_math
 from typing import Generator
 
@@ -67,7 +67,7 @@ class TestBasicExpressions(unittest.TestCase):
     def test_type_casting(self):
         def cast_fn(x):
             # Cast to int64 and back to float32
-            return np.float32(np.int64(x))
+            return np.astype(np.astype(x, np.int64), np.float32)
 
         # Test frontend compilation (MLIR generation)
         mlir_code = compile(cast_fn, debug=True)
@@ -180,9 +180,9 @@ class TestBasicExpressions(unittest.TestCase):
             x: Term, y: Term, z: Term, i: i64, f: f64
         ) -> Generator[RewriteOrRule, None, None]:
             # x + 0.0 = x (float case)
-            yield rewrite(Add(x, Term.lit_f32(0.0))).to(x)
+            yield rewrite(x + Term.lit_f32(0.0)).to(x)
             # 0.0 + x = x (float case)
-            yield rewrite(Add(Term.lit_f32(0.0), x)).to(x)
+            yield rewrite(Term.lit_f32(0.0) + x).to(x)
 
         def custom_fn(x):
             return x + 0.0

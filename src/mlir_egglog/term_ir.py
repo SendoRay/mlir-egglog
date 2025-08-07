@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-import egglog
-from egglog import StringLike, i64, f64, i64Like, f64Like  # noqa: F401
-from egglog import RewriteOrRule, rewrite
-from typing import Generator
-from mlir_egglog.expr_model import Expr, FloatLiteral, Symbol, IntLiteral
 from abc import abstractmethod
+from types import ModuleType
+import sys
+
+import numpy as np
+import egglog
+
+
+basic_math = egglog.ruleset(name="basic_math")
 
 # Operation costs based on LLVM instruction complexity
 # Basic arithmetic (single CPU instruction)
@@ -40,214 +43,221 @@ COST_TRIG_ASINCOS = 90
 COST_HYPERBOLIC = 180
 COST_TANH = 200
 
+_array_ns = sys.modules[__name__]
 
-class Term(egglog.Expr):
+# Must be globally defined as a method because NumPy checks the type object itself instead of relying on `__getattr__`
+egglog.define_expr_method("__array_ufunc__")
+egglog.define_expr_method("__array_function__")
+
+
+class Term(egglog.Expr, ruleset=basic_math):
     """
     Intermediate representation for the egraph.
     """
 
-    @classmethod
-    @abstractmethod
-    def var(self, k: StringLike) -> Term: ...
+    @egglog.method(preserve=True)
+    def __array_namespace__(self, api_version: object = None) -> ModuleType:
+        """
+        Returns this module which should be compatible as an array API namespace
+
+        https://data-apis.org/array-api/2024.12/API_specification/generated/array_api.array.__array_namespace__.html
+        """
+        return _array_ns
+
+    @egglog.method(preserve=True)
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """
+        Redirect calling ufuncs on terms to top level functions in this module of the same name.
+
+        https://numpy.org/devdocs/user/basics.dispatch.html
+        """
+        if method == "__call__":
+            return getattr(_array_ns, ufunc.__name__)(*inputs, **kwargs)
+        raise NotImplementedError(
+            f"Unsupported ufunc method: {method}. Only '__call__' is supported."
+        )
+
+    @egglog.method(preserve=True)
+    def __array_function__(self, func, types, args, kwargs):
+        return getattr(_array_ns, func.__name__)(*args, **kwargs)
 
     @classmethod
     @abstractmethod
-    def lit_f64(self, v: f64Like) -> Term: ...
+    def var(self, k: egglog.StringLike) -> Term: ...
 
     @classmethod
     @abstractmethod
-    def lit_f32(self, v: f64Like | i64) -> Term: ...
+    def lit_f64(self, v: egglog.f64Like) -> Term: ...
 
     @classmethod
     @abstractmethod
-    def lit_i64(self, v: i64Like) -> Term: ...
+    def lit_f32(self, v: egglog.f64Like) -> Term: ...
 
+    @classmethod
+    @abstractmethod
+    def lit_i64(self, v: egglog.i64Like) -> Term: ...
+
+    @egglog.method(cost=COST_BASIC_ARITH)
     @abstractmethod
     def __add__(self, other: Term) -> Term: ...
 
+    @egglog.method(cost=COST_BASIC_ARITH)
     @abstractmethod
     def __mul__(self, other: Term) -> Term: ...
 
+    @egglog.method(cost=COST_BASIC_ARITH)
     @abstractmethod
     def __neg__(self) -> Term: ...
 
+    @egglog.method(cost=COST_BASIC_ARITH)
     @abstractmethod
     def __sub__(self, other: Term) -> Term: ...
 
+    @egglog.method(cost=COST_DIV)
     @abstractmethod
     def __truediv__(self, other: Term) -> Term: ...
 
+    @egglog.method(cost=COST_POW)
     @abstractmethod
     def __pow__(self, other: Term) -> Term: ...
 
+    @egglog.method(preserve=True)
+    def exp(self) -> Term:
+        return exp(self)
 
-# Binary Operations
-@egglog.function(cost=COST_BASIC_ARITH)
-def Add(x: Term, y: Term) -> Term: ...
+    @egglog.method(preserve=True)
+    def sqrt(self) -> Term:
+        return sqrt(self)
+
+    @egglog.method(preserve=True)
+    def log(self) -> Term:
+        return log(self)
+
+    @egglog.method(preserve=True)
+    def sin(self) -> Term:
+        return sin(self)
+
+    @egglog.method(preserve=True)
+    def cos(self) -> Term:
+        return cos(self)
+
+    @egglog.method(preserve=True)
+    def tan(self) -> Term:
+        return tan(self)
+
+    @egglog.method(preserve=True)
+    def asin(self) -> Term:
+        return asin(self)
+
+    @egglog.method(preserve=True)
+    def acos(self) -> Term:
+        return acos(self)
+
+    @egglog.method(preserve=True)
+    def atan(self) -> Term:
+        return atan(self)
 
 
-@egglog.function(cost=COST_BASIC_ARITH)
-def Mul(x: Term, y: Term) -> Term: ...
+class DType(egglog.Expr):
+    def __init__(self, name: egglog.StringLike) -> None: ...
+
+    __match_args__ = ("name",)
+
+    @egglog.method(preserve=True)  # type: ignore[prop-decorator]
+    @property
+    def name(self) -> str:
+        match egglog.get_callable_args(self, DType):
+            case (egglog.String(name),):
+                return name
+        raise egglog.ExprValueError(self, "DType(String(name))")
 
 
-@egglog.function(cost=COST_DIV)
-def Div(x: Term, y: Term) -> Term: ...
-
-
-@egglog.function(cost=COST_POW)
-def Pow(x: Term, y: Term) -> Term: ...
+egglog.converter(type, DType, lambda t: DType(np.dtype(t).name))
 
 
 @egglog.function(cost=COST_POW_INTEGER)
-def PowConst(x: Term, i: i64Like) -> Term: ...
+def PowConst(x: Term, i: egglog.i64Like) -> Term: ...
 
 
 # Unary Operations
 @egglog.function(cost=COST_TRIG_BASIC)
-def Sin(x: Term) -> Term: ...
+def sin(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_TRIG_BASIC)
-def Cos(x: Term) -> Term: ...
+def cos(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_TRIG_TAN)
-def Tan(x: Term) -> Term: ...
+def tan(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_TRIG_ASINCOS)
-def ASin(x: Term) -> Term: ...
+def asin(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_TRIG_ASINCOS)
-def ACos(x: Term) -> Term: ...
+def acos(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_TRIG_ATAN)
-def ATan(x: Term) -> Term: ...
+def atan(x: Term) -> Term: ...
 
 
-@egglog.function(cost=COST_SQRT)
-def Sqrt(x: Term) -> Term: ...
+@egglog.function(egg_fn="term_sqrt", cost=COST_SQRT)
+def sqrt(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_TANH)
-def Tanh(x: Term) -> Term: ...
+def tanh(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_HYPERBOLIC)
-def Sinh(x: Term) -> Term: ...
+def sinh(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_HYPERBOLIC)
-def Cosh(x: Term) -> Term: ...
+def cosh(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_EXP)
-def Exp(x: Term) -> Term: ...
+def exp(x: Term) -> Term: ...
 
 
-@egglog.function(cost=COST_LOG)
-def Log(x: Term) -> Term: ...
+@egglog.function(egg_fn="term_log", cost=COST_LOG)
+def log(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_LOG10)
-def Log10(x: Term) -> Term: ...
+def log10(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_LOG2)
-def Log2(x: Term) -> Term: ...
-
-
-@egglog.function(cost=COST_CAST)
-def CastF32(x: Term) -> Term: ...
-
-
-@egglog.function(cost=COST_CAST)
-def CastI64(x: Term) -> Term: ...
+def log2(x: Term) -> Term: ...
 
 
 @egglog.function(cost=COST_BASIC_ARITH)
-def Maximum(x: Term, y: Term) -> Term: ...
+def maximum(x: Term, y: Term) -> Term: ...
 
 
-@egglog.function(cost=COST_BASIC_ARITH)
-def Neg(x: Term) -> Term: ...
+@egglog.function(subsume=True, ruleset=basic_math)
+def absolute(x: Term) -> Term:
+    return maximum(x, -x)
 
 
-def as_egraph(expr: Expr) -> Term:
-    """
-    Convert a syntax tree expression to an egraph term.
-    """
-    from mlir_egglog import expr_model
-
-    match expr:
-        # Literals and Symbols
-        case FloatLiteral(fval=val):
-            return Term.lit_f32(val)
-        case IntLiteral(ival=val):
-            return Term.lit_i64(int(val))
-        case Symbol(name=name):
-            return Term.var(name)
-
-        # Binary Operations
-        case expr_model.Add(lhs=lhs, rhs=rhs):
-            return Add(as_egraph(lhs), as_egraph(rhs))
-        case expr_model.Mul(lhs=lhs, rhs=rhs):
-            return Mul(as_egraph(lhs), as_egraph(rhs))
-        case expr_model.Div(lhs=lhs, rhs=rhs):
-            return Div(as_egraph(lhs), as_egraph(rhs))
-        case expr_model.Pow(lhs=lhs, rhs=rhs):
-            return Pow(as_egraph(lhs), as_egraph(rhs))
-        case expr_model.Maximum(lhs=lhs, rhs=rhs):
-            return Maximum(as_egraph(lhs), as_egraph(rhs))
-
-        # Trigonometric Functions
-        case expr_model.Sin(operand=op):
-            return Sin(as_egraph(op))
-        case expr_model.Cos(operand=op):
-            return Cos(as_egraph(op))
-        case expr_model.Tan(operand=op):
-            return Tan(as_egraph(op))
-        case expr_model.ASin(operand=op):
-            return ASin(as_egraph(op))
-        case expr_model.ACos(operand=op):
-            return ACos(as_egraph(op))
-        case expr_model.ATan(operand=op):
-            return ATan(as_egraph(op))
-
-        # Hyperbolic Functions
-        case expr_model.Tanh(operand=op):
-            return Tanh(as_egraph(op))
-        case expr_model.Sinh(operand=op):
-            return Sinh(as_egraph(op))
-        case expr_model.Cosh(operand=op):
-            return Cosh(as_egraph(op))
-
-        # Exponential and Logarithmic Functions
-        case expr_model.Exp(operand=op):
-            return Exp(as_egraph(op))
-        case expr_model.Log(operand=op):
-            return Log(as_egraph(op))
-        case expr_model.Log10(operand=op):
-            return Log10(as_egraph(op))
-        case expr_model.Log2(operand=op):
-            return Log2(as_egraph(op))
-
-        # Type Casting and Other Operations
-        case expr_model.CastF32(operand=op):
-            return CastF32(as_egraph(op))
-        case expr_model.CastI64(operand=op):
-            return CastI64(as_egraph(op))
-        case expr_model.Neg(operand=op):
-            return Neg(as_egraph(op))
-        case expr_model.Sqrt(operand=op):
-            return Sqrt(as_egraph(op))
-
-        case _:
-            raise NotImplementedError(f"Unsupported expression type: {type(expr)}")
+@egglog.function(subsume=True, ruleset=basic_math)
+def relu(x):
+    return maximum(x, 0.0)
 
 
-def birewrite_subsume(a: Term, b: Term) -> Generator[RewriteOrRule, None, None]:
-    yield rewrite(a, subsume=True).to(b)
-    yield rewrite(b).to(a)
+@egglog.function(subsume=True, ruleset=basic_math)
+def sigmoid(x):
+    return 1.0 / (1.0 + exp(-x))
+
+
+@egglog.function(cost=COST_CAST)
+def astype(x: Term, dtype: DType) -> Term: ...
+
+
+egglog.converter(egglog.f64, Term, Term.lit_f32)  # type: ignore[type-abstract]
+egglog.converter(egglog.i64, Term, Term.lit_i64)  # type: ignore[type-abstract]

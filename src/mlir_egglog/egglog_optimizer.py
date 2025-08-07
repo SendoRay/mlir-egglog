@@ -4,10 +4,8 @@ from types import FunctionType
 from egglog import EGraph, RewriteOrRule, Ruleset
 from egglog.egraph import UnstableCombinedRuleset
 
-from mlir_egglog.term_ir import Term, as_egraph
+from mlir_egglog.term_ir import Term
 from mlir_egglog.python_to_ir import interpret
-from mlir_egglog import builtin_functions as ns
-from mlir_egglog.expr_model import Expr
 from mlir_egglog.ir_to_mlir import convert_term_to_mlir
 
 # Rewrite rules
@@ -16,9 +14,9 @@ from mlir_egglog.optimization_rules import basic_math, trig_simplify
 OPTS: tuple[Ruleset | RewriteOrRule, ...] = (basic_math, trig_simplify)
 
 
-def extract(ast: Expr, rules: tuple[RewriteOrRule | Ruleset, ...], debug=False) -> Term:
-    root = as_egraph(ast)
-
+def extract(
+    root: Term, rules: tuple[RewriteOrRule | Ruleset, ...], debug=False
+) -> Term:
     egraph = EGraph()
     egraph.let("root", root)
 
@@ -47,7 +45,7 @@ def compile(
     fn: FunctionType, rewrites: tuple[RewriteOrRule | Ruleset, ...] = OPTS, debug=True
 ) -> str:
     # Convert np functions according to the namespace map
-    exprtree = interpret(fn, {"np": ns})
+    exprtree = interpret(fn)
     extracted = extract(exprtree, rewrites, debug)
 
     # Get the argument spec

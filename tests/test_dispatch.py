@@ -4,7 +4,7 @@ from mlir_egglog.egglog_optimizer import compile
 from mlir_egglog.jit_engine import JITEngine
 from mlir_egglog.optimization_rules import basic_math
 from egglog import rewrite, ruleset, RewriteOrRule, i64, f64
-from mlir_egglog.term_ir import Term, Add
+from mlir_egglog.term_ir import Term
 from typing import Generator
 
 
@@ -126,9 +126,9 @@ def test_custom_rewrites():
         x: Term, y: Term, z: Term, i: i64, f: f64
     ) -> Generator[RewriteOrRule, None, None]:
         # x + 0.0 = x (float case)
-        yield rewrite(Add(x, Term.lit_f32(0.0))).to(x)
+        yield rewrite(x + Term.lit_f32(0.0)).to(x)
         # 0.0 + x = x (float case)
-        yield rewrite(Add(Term.lit_f32(0.0), x)).to(x)
+        yield rewrite(Term.lit_f32(0.0) + x).to(x)
 
     # Define a function that uses the custom rewrite rule
     @kernel("float32(float32)", rewrites=(basic_math, float_rules))
