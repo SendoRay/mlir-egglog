@@ -209,68 +209,52 @@ def as_source(
     match get_callable_args(expr, ir.Term.lit_f32):
         case (f64(f),):
             return f"arith.constant {f:e} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.Term.lit_i64):
         case (i64(i),):
             return f"arith.constant {i} : {I32_TYPE}"
-
     match get_callable_args(expr, ir.Term.var):
         case (String(var_name),):
             return f"%arg_{var_name}" if var_name in vars else f"%{var_name}"
-
     match get_callable_args(expr, ir.Term.__add__):
         case (lhs, rhs):
             return f"arith.addf {lookup_fn(lhs)}, {lookup_fn(rhs)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.Term.__mul__):
         case (lhs, rhs):
             return f"arith.mulf {lookup_fn(lhs)}, {lookup_fn(rhs)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.Term.__truediv__):
         case (lhs, rhs):
             return f"arith.divf {lookup_fn(lhs)}, {lookup_fn(rhs)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.maximum):
         case (lhs, rhs):
             # Maximum is handled in the generate() method for multi-operation support
             return "ERROR_MAXIMUM_HANDLED_IN_GENERATE"
-
     match get_callable_args(expr, ir.sin):
         case (arg,):
             return f"math.sin {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.cos):
         case (arg,):
             return f"math.cos {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.log):
         case (arg,):
             return f"math.log {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.sqrt):
         case (arg,):
             return f"math.sqrt {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.exp):
         case (arg,):
             return f"math.exp {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.sinh):
         case (arg,):
             return f"math.sinh {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.cosh):
         case (arg,):
             return f"math.cosh {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.tanh):
         case (arg,):
             return f"math.tanh {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.Term.__neg__):
         case (arg,):
             return f"arith.negf {lookup_fn(arg)} : {F32_TYPE}"
-
     match get_callable_args(expr, ir.astype):
         case (arg, ir.DType("float32")):
             return f"arith.sitofp {lookup_fn(arg)} : {I64_TYPE} to {F32_TYPE}"
@@ -280,8 +264,7 @@ def as_source(
     raise NotImplementedError(
         f"Unsupported expression type: {type(expr)}\n"
         f"Expression: {expr}\n"
-        f"Supported types: FloatLiteral, IntLiteral, Symbol, Add, Mul, Div, Maximum, "
-        f"Sin, Cos, Log, Sqrt, Exp, Sinh, Cosh, Tanh, Neg\n"
+        f"Supported types: literals, variables, +, *, /, max, sin, cos, log, sqrt, exp, sinh, cosh, tanh, ~, astype\n"
         f"Hint: If you're using a NumPy function, make sure it's supported by the compiler. "
         f"Check builtin_functions.py for available operations."
     )
