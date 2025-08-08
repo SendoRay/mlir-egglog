@@ -8,8 +8,7 @@ import inspect
 from typing import Callable, Any
 
 from mlir_egglog.python_to_ir import interpret
-from mlir_egglog.egglog_optimizer import extract
-from mlir_egglog.ir_to_mlir import convert_term_to_mlir
+from mlir_egglog.egglog_optimizer import extract, convert_term_to_mlir
 from mlir_egglog.jit_engine import JITEngine
 from mlir_egglog.optimization_rules import basic_math
 

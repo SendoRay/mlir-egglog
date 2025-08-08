@@ -6,7 +6,7 @@ from egglog.egraph import UnstableCombinedRuleset
 
 from mlir_egglog.term_ir import Term
 from mlir_egglog.python_to_ir import interpret
-from mlir_egglog.ir_to_mlir import convert_term_to_mlir
+from mlir_egglog.mlir_gen import MLIRGen
 
 # Rewrite rules
 from mlir_egglog.optimization_rules import basic_math, trig_simplify
@@ -52,3 +52,14 @@ def compile(
     argspec = inspect.signature(fn)
     params = ",".join(map(str, argspec.parameters))
     return convert_term_to_mlir(extracted, params)
+
+
+def convert_term_to_mlir(tree: Term, argspec: str) -> str:
+    """
+    Convert a term to MLIR.
+    """
+
+    argnames = map(lambda x: x.strip(), argspec.split(","))
+    argmap = {k: f"%arg_{k}" for k in argnames}
+    source = MLIRGen(tree, argmap).generate()
+    return source
