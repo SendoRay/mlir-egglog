@@ -83,15 +83,15 @@ def test_cost_based_optimization():
 
     # Verify optimizations occurred
     assert str(opt_expr1) == str(x * x), "x^2 should be optimized to x * x"
-    assert str(opt_expr2) == str(Term.lit_f64(1.0)), (
-        "cos(x)^2 + sin(x)^2 should be optimized to 1"
-    )
+    assert str(opt_expr2) == str(
+        Term.lit_f64(1.0)
+    ), "cos(x)^2 + sin(x)^2 should be optimized to 1"
 
     # Verify cost improvements
     assert cost_before1 > cost_after1, "Optimization should reduce cost of x^2"
-    assert cost_before2 > cost_after2, (
-        "Optimization should reduce cost of trig identity"
-    )
+    assert (
+        cost_before2 > cost_after2
+    ), "Optimization should reduce cost of trig identity"
 
 
 def test_compound_expression_optimization():
@@ -130,10 +130,10 @@ def test_compound_expression_optimization():
     expected = exp(three * x)
 
     # Verify optimization occurred
-    assert str(opt_expr) == str(expected), (
-        "e^x * e^x * e^x should be optimized to e^(3x)"
-    )
+    assert str(opt_expr) == str(
+        expected
+    ), "e^x * e^x * e^x should be optimized to e^(3x)"
 
-    assert cost_before > cost_after, (
-        "Optimization should reduce cost of compound exponential"
-    )
+    assert (
+        cost_before > cost_after
+    ), "Optimization should reduce cost of compound exponential"
