@@ -3,7 +3,7 @@ name = "mlir-egglog"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "egglog>=10.0.2",
+    "egglog>=11.0.0",
     "llvmlite>=0.44.0",
     "numpy>=2.2.5",
     "pyyaml>=6.0.2",
@@ -36,6 +36,5 @@ disallow_any_generics = "true"
 follow_imports = "silent"
 
 [tool.uv.sources]
-egglog = { path = "../egg-smol-python", editable = true }
 # until https://github.com/python/mypy/pull/19600 is merged
 mypy = { git = "https://github.com/saulshanabrook/mypy", branch = "issue-19599" }
