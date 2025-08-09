@@ -24,7 +24,7 @@ class Dispatcher:
         py_func: types.FunctionType,
         rewrites: tuple[RewriteOrRule | Ruleset, ...] | None = None,
     ):
-        self.py_func = py_func
+        self.py_func = py_func  # type: ignore[assignment]
         self._compiled_func = None
         self._compiler = None
         self.rewrites = rewrites

@@ -2,8 +2,9 @@ from textwrap import indent
 from typing import Callable
 import platform
 import llvmlite.binding as llvm
-from mlir_egglog import expr_model as ir
+from mlir_egglog import term_ir as ir
 from mlir_egglog.llvm_runtime import init_llvm
+from egglog import f64, get_callable_args, String, i64
 
 KERNEL_NAME = "kernel_worker"
 F32_TYPE = "f32"
@@ -87,12 +88,12 @@ class MLIRGen:
     Generate textual MLIR from a symbolic expression.
     """
 
-    root: ir.Expr
-    cache: dict[ir.Expr, str]
+    root: ir.Term
+    cache: dict[ir.Term, str]
     vars: list[str]  # local variables
     temp_counter: int  # Counter for generating unique variable names
 
-    def __init__(self, root: ir.Expr, argmap: dict[str, str]):
+    def __init__(self, root: ir.Term, argmap: dict[str, str]):
         # Use the keys from argmap as the variable names
         self.root = root
         self.cache = {}
@@ -113,26 +114,28 @@ class MLIRGen:
 
         for i, subex in enumerate(subexprs):
             # Skip if this is just a variable reference
-            if isinstance(subex, ir.Symbol) and subex.name in self.vars:
-                continue
+            match get_callable_args(subex, ir.Term.var):
+                case (String(var_name),) if var_name in self.vars:
+                    continue
 
             # Handle Maximum operations specially for multi-operation Linux case
-            if isinstance(subex, ir.Maximum):
-                # Process operands
-                self.walk(subex.lhs)
-                self.walk(subex.rhs)
+            match get_callable_args(subex, ir.maximum):
+                case (lhs, rhs):
+                    # Process operands
+                    self.walk(lhs)
+                    self.walk(rhs)
 
-                # Generate platform-specific MLIR
-                self.temp_counter += 1
-                var_name = f"%max_{self.temp_counter}"
-                lhs_val = self.cache[subex.lhs]
-                rhs_val = self.cache[subex.rhs]
+                    # Generate platform-specific MLIR
+                    self.temp_counter += 1
+                    var_name = f"%max_{self.temp_counter}"
+                    lhs_val = self.cache[lhs]
+                    rhs_val = self.cache[rhs]
 
-                max_ops = generate_maximum_mlir(lhs_val, rhs_val, var_name)
-                buf.extend(max_ops)
+                    max_ops = generate_maximum_mlir(lhs_val, rhs_val, var_name)
+                    buf.extend(max_ops)
 
-                self.cache[subex] = var_name
-                continue
+                    self.cache[subex] = var_name
+                    continue
 
             # Recurse and cache the subexpression
             self.walk(subex)
@@ -160,7 +163,7 @@ class MLIRGen:
             get_module_prologue() + indent(kernel_code, MODULE_INDENT) + module_epilogue
         )
 
-    def unfold(self, expr: ir.Expr) -> set[ir.Expr]:
+    def unfold(self, expr: ir.Term) -> set[ir.Term]:
         """
         Unfold an expression into a set of subexpressions.
         """
@@ -177,7 +180,7 @@ class MLIRGen:
 
         return all_subexprs
 
-    def walk(self, expr: ir.Expr):
+    def walk(self, expr: ir.Term):
         """
         Walk an expression recursively and generate MLIR code for subexpressions,
         caching the intermediate expressions in a lookup table.
@@ -191,81 +194,77 @@ class MLIRGen:
         self.cache[expr] = as_source(expr, self.vars, lookup)
 
 
-def get_children(expr: ir.Expr) -> set[ir.Expr]:
+def get_children(expr: ir.Term) -> set[ir.Term]:
     """Get child expressions for an AST node."""
-    match expr:
-        case ir.BinaryOp():
-            return {expr.lhs, expr.rhs}
-        case ir.UnaryOp():
-            return {expr.operand}
-        case ir.FloatLiteral() | ir.IntLiteral() | ir.Symbol():
-            return set()
-        case _:
-            raise NotImplementedError(
-                f"Cannot get children for expression type: {type(expr)}\n"
-                f"Expression: {expr}\n"
-                f"Supported types: BinaryOp (Add, Mul, Div, Maximum), UnaryOp (Sin, Cos, etc.), "
-                f"FloatLiteral, IntLiteral, Symbol\n"
-                f"This error typically occurs when trying to process an unsupported operation."
-            )
+    return {child for child in get_callable_args(expr) if isinstance(child, ir.Term)}
 
 
 def as_source(
-    expr: ir.Expr, vars: list[str], lookup_fn: Callable[[ir.Expr], str]
+    expr: ir.Term, vars: list[str], lookup_fn: Callable[[ir.Term], str]
 ) -> str:
     """
     Convert expressions to MLIR source code using arith and math dialects.
     """
-    match expr:
-        # Literals and Symbols
-        case ir.FloatLiteral(fval=val):
-            return f"arith.constant {val:e} : {F32_TYPE}"
-        case ir.IntLiteral(ival=val):
-            return f"arith.constant {val} : {I32_TYPE}"
-        case ir.Symbol(name=name) if name in vars:
-            return f"%arg_{name}"
-        case ir.Symbol(name=name):
-            return f"%{name}"
-
-        # Binary Operations
-        case ir.Add(lhs=lhs, rhs=rhs):
+    # Literals and Symbols
+    match get_callable_args(expr, ir.Term.lit_f32):
+        case (f64(f),):
+            return f"arith.constant {f:e} : {F32_TYPE}"
+    match get_callable_args(expr, ir.Term.lit_i64):
+        case (i64(i),):
+            return f"arith.constant {i} : {I32_TYPE}"
+    match get_callable_args(expr, ir.Term.var):
+        case (String(var_name),):
+            return f"%arg_{var_name}" if var_name in vars else f"%{var_name}"
+    match get_callable_args(expr, ir.Term.__add__):
+        case (lhs, rhs):
             return f"arith.addf {lookup_fn(lhs)}, {lookup_fn(rhs)} : {F32_TYPE}"
-        case ir.Mul(lhs=lhs, rhs=rhs):
+    match get_callable_args(expr, ir.Term.__mul__):
+        case (lhs, rhs):
             return f"arith.mulf {lookup_fn(lhs)}, {lookup_fn(rhs)} : {F32_TYPE}"
-        case ir.Div(lhs=lhs, rhs=rhs):
+    match get_callable_args(expr, ir.Term.__truediv__):
+        case (lhs, rhs):
             return f"arith.divf {lookup_fn(lhs)}, {lookup_fn(rhs)} : {F32_TYPE}"
-        case ir.Maximum(lhs=lhs, rhs=rhs):
+    match get_callable_args(expr, ir.maximum):
+        case (lhs, rhs):
             # Maximum is handled in the generate() method for multi-operation support
             return "ERROR_MAXIMUM_HANDLED_IN_GENERATE"
+    match get_callable_args(expr, ir.sin):
+        case (arg,):
+            return f"math.sin {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.cos):
+        case (arg,):
+            return f"math.cos {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.log):
+        case (arg,):
+            return f"math.log {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.sqrt):
+        case (arg,):
+            return f"math.sqrt {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.exp):
+        case (arg,):
+            return f"math.exp {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.sinh):
+        case (arg,):
+            return f"math.sinh {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.cosh):
+        case (arg,):
+            return f"math.cosh {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.tanh):
+        case (arg,):
+            return f"math.tanh {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.Term.__neg__):
+        case (arg,):
+            return f"arith.negf {lookup_fn(arg)} : {F32_TYPE}"
+    match get_callable_args(expr, ir.astype):
+        case (arg, ir.DType("float32")):
+            return f"arith.sitofp {lookup_fn(arg)} : {I64_TYPE} to {F32_TYPE}"
+        case (arg, ir.DType("int64")):
+            return f"arith.fptosi {lookup_fn(arg)} : {F32_TYPE} to {I64_TYPE}"
 
-        # Unary Math Operations
-        case (
-            ir.Sin()
-            | ir.Cos()
-            | ir.Log()
-            | ir.Sqrt()
-            | ir.Exp()
-            | ir.Sinh()
-            | ir.Cosh()
-            | ir.Tanh()
-        ) as op:
-            op_name = type(op).__name__.lower()
-            return f"math.{op_name} {lookup_fn(op.operand)} : {F32_TYPE}"
-        case ir.Neg(operand=op):
-            return f"arith.negf {lookup_fn(op)} : {F32_TYPE}"
-
-        # Type Casting
-        case ir.CastF32(operand=op):
-            return f"arith.sitofp {lookup_fn(op)} : {I64_TYPE} to {F32_TYPE}"
-        case ir.CastI64(operand=op):
-            return f"arith.fptosi {lookup_fn(op)} : {F32_TYPE} to {I64_TYPE}"
-
-        case _:
-            raise NotImplementedError(
-                f"Unsupported expression type: {type(expr)}\n"
-                f"Expression: {expr}\n"
-                f"Supported types: FloatLiteral, IntLiteral, Symbol, Add, Mul, Div, Maximum, "
-                f"Sin, Cos, Log, Sqrt, Exp, Sinh, Cosh, Tanh, Neg, CastF32, CastI64\n"
-                f"Hint: If you're using a NumPy function, make sure it's supported by the compiler. "
-                f"Check builtin_functions.py for available operations."
-            )
+    raise NotImplementedError(
+        f"Unsupported expression type: {type(expr)}\n"
+        f"Expression: {expr}\n"
+        f"Supported types: literals, variables, +, *, /, max, sin, cos, log, sqrt, exp, sinh, cosh, tanh, ~, astype\n"
+        f"Hint: If you're using a NumPy function, make sure it's supported by the compiler. "
+        f"Check builtin_functions.py for available operations."
+    )

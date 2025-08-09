@@ -53,7 +53,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593 }
 wheels = [
@@ -92,19 +92,50 @@ wheels = [
 
 [[package]]
 name = "egglog"
-version = "8.0.1"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../egg-smol-python" }
 dependencies = [
     { name = "anywidget" },
     { name = "black" },
     { name = "graphviz" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/9e/29fdfd6d7436e55ccf6f2c70fb3530e33022dcdefc199cfc8995b838c004/egglog-8.0.1.tar.gz", hash = "sha256:b817b46de37e764efa3bf54cc1909e3e798ffe5f9488659120ef8419e6573d3b", size = 3492895 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ba/b2/0e1aafecd9b73be4f01f64e5fac2b5c9e02126715f3c70cc69a76867cd6f/egglog-8.0.1-cp312-cp312-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:dcf50e2d3b4ab46e3d8cfc5da2771457057348709f765d5eee1089697ae020e0", size = 4873492 },
-    { url = "https://files.pythonhosted.org/packages/79/9b/7d6679c9fa7e97b122aa2765205e50ab1827805a2732843285f17e124548/egglog-8.0.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f13e1227efabc167962c41b25a3af77de61943c94ac86f2ff05b8f40e0861a8f", size = 3260926 },
-    { url = "https://files.pythonhosted.org/packages/39/f9/9a4ae44a7bb3eea4ec2f0f77a83246d40e3c6bc17debfec52aa95e78507d/egglog-8.0.1-cp312-none-win_amd64.whl", hash = "sha256:5b4ed2d0398b1775b8670c239e831c9ac8e3625127857c3a739f8a434b7f5981", size = 2788710 },
+
+[package.metadata]
+requires-dist = [
+    { name = "ablog", marker = "extra == 'docs'" },
+    { name = "anywidget" },
+    { name = "anywidget", marker = "extra == 'docs'" },
+    { name = "anywidget", extras = ["dev"], marker = "extra == 'dev'" },
+    { name = "array-api-compat", marker = "extra == 'array'" },
+    { name = "black" },
+    { name = "egglog", extras = ["array"], marker = "extra == 'docs'" },
+    { name = "egglog", extras = ["array"], marker = "extra == 'test'" },
+    { name = "egglog", extras = ["docs", "test"], marker = "extra == 'dev'" },
+    { name = "graphviz" },
+    { name = "jupyterlab", marker = "extra == 'dev'" },
+    { name = "line-profiler", marker = "extra == 'docs'" },
+    { name = "llvmlite", marker = "extra == 'array'", specifier = ">=0.42.0" },
+    { name = "matplotlib", marker = "extra == 'docs'" },
+    { name = "mypy", marker = "extra == 'dev'" },
+    { name = "mypy", marker = "extra == 'test'" },
+    { name = "myst-nb", marker = "extra == 'docs'" },
+    { name = "nbconvert", marker = "extra == 'docs'" },
+    { name = "numba", marker = "extra == 'array'", specifier = ">=0.59.1" },
+    { name = "numpy", marker = "extra == 'array'", specifier = ">2" },
+    { name = "pre-commit", marker = "extra == 'dev'" },
+    { name = "pydata-sphinx-theme", marker = "extra == 'docs'" },
+    { name = "pytest", marker = "extra == 'test'" },
+    { name = "pytest-benchmark", marker = "extra == 'test'" },
+    { name = "pytest-codspeed", marker = "extra == 'test'" },
+    { name = "pytest-xdist", marker = "extra == 'test'" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "scikit-learn", marker = "extra == 'array'" },
+    { name = "seaborn", marker = "extra == 'docs'" },
+    { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'" },
+    { name = "sphinx-gallery", marker = "extra == 'docs'" },
+    { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'" },
+    { name = "syrupy", marker = "extra == 'test'" },
+    { name = "typing-extensions" },
 ]
 
 [[package]]
@@ -237,7 +268,7 @@ wheels = [
 [[package]]
 name = "mlir-egglog"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "egglog" },
     { name = "llvmlite" },
@@ -255,7 +286,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "egglog", specifier = ">=8.0.1" },
+    { name = "egglog", editable = "../egg-smol-python" },
     { name = "llvmlite", specifier = ">=0.44.0" },
     { name = "numpy", specifier = ">=2.2.5" },
     { name = "pyyaml", specifier = ">=6.0.2" },
@@ -264,34 +295,19 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "black", specifier = ">=25.1.0" },
-    { name = "mypy", specifier = ">=1.15.0" },
+    { name = "mypy", git = "https://github.com/saulshanabrook/mypy?branch=issue-19599" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "ruff", specifier = ">=0.9.10" },
 ]
 
 [[package]]
 name = "mypy"
-version = "1.15.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.18.0+dev.5a6464afb8a3ae59d753969251a34f7f39fee6af"
+source = { git = "https://github.com/saulshanabrook/mypy?branch=issue-19599#5a6464afb8a3ae59d753969251a34f7f39fee6af" }
 dependencies = [
     { name = "mypy-extensions" },
+    { name = "pathspec" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/43/d5e49a86afa64bd3839ea0d5b9c7103487007d728e1293f52525d6d5486a/mypy-1.15.0.tar.gz", hash = "sha256:404534629d51d3efea5c800ee7c42b72a6554d6c400e6a79eafe15d11341fd43", size = 3239717 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/3a/03c74331c5eb8bd025734e04c9840532226775c47a2c39b56a0c8d4f128d/mypy-1.15.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:aea39e0583d05124836ea645f412e88a5c7d0fd77a6d694b60d9b6b2d9f184fd", size = 10793981 },
-    { url = "https://files.pythonhosted.org/packages/f0/1a/41759b18f2cfd568848a37c89030aeb03534411eef981df621d8fad08a1d/mypy-1.15.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2f2147ab812b75e5b5499b01ade1f4a81489a147c01585cda36019102538615f", size = 9749175 },
-    { url = "https://files.pythonhosted.org/packages/12/7e/873481abf1ef112c582db832740f4c11b2bfa510e829d6da29b0ab8c3f9c/mypy-1.15.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ce436f4c6d218a070048ed6a44c0bbb10cd2cc5e272b29e7845f6a2f57ee4464", size = 11455675 },
-    { url = "https://files.pythonhosted.org/packages/b3/d0/92ae4cde706923a2d3f2d6c39629134063ff64b9dedca9c1388363da072d/mypy-1.15.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8023ff13985661b50a5928fc7a5ca15f3d1affb41e5f0a9952cb68ef090b31ee", size = 12410020 },
-    { url = "https://files.pythonhosted.org/packages/46/8b/df49974b337cce35f828ba6fda228152d6db45fed4c86ba56ffe442434fd/mypy-1.15.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:1124a18bc11a6a62887e3e137f37f53fbae476dc36c185d549d4f837a2a6a14e", size = 12498582 },
-    { url = "https://files.pythonhosted.org/packages/13/50/da5203fcf6c53044a0b699939f31075c45ae8a4cadf538a9069b165c1050/mypy-1.15.0-cp312-cp312-win_amd64.whl", hash = "sha256:171a9ca9a40cd1843abeca0e405bc1940cd9b305eaeea2dda769ba096932bb22", size = 9366614 },
-    { url = "https://files.pythonhosted.org/packages/6a/9b/fd2e05d6ffff24d912f150b87db9e364fa8282045c875654ce7e32fffa66/mypy-1.15.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:93faf3fdb04768d44bf28693293f3904bbb555d076b781ad2530214ee53e3445", size = 10788592 },
-    { url = "https://files.pythonhosted.org/packages/74/37/b246d711c28a03ead1fd906bbc7106659aed7c089d55fe40dd58db812628/mypy-1.15.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:811aeccadfb730024c5d3e326b2fbe9249bb7413553f15499a4050f7c30e801d", size = 9753611 },
-    { url = "https://files.pythonhosted.org/packages/a6/ac/395808a92e10cfdac8003c3de9a2ab6dc7cde6c0d2a4df3df1b815ffd067/mypy-1.15.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:98b7b9b9aedb65fe628c62a6dc57f6d5088ef2dfca37903a7d9ee374d03acca5", size = 11438443 },
-    { url = "https://files.pythonhosted.org/packages/d2/8b/801aa06445d2de3895f59e476f38f3f8d610ef5d6908245f07d002676cbf/mypy-1.15.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c43a7682e24b4f576d93072216bf56eeff70d9140241f9edec0c104d0c515036", size = 12402541 },
-    { url = "https://files.pythonhosted.org/packages/c7/67/5a4268782eb77344cc613a4cf23540928e41f018a9a1ec4c6882baf20ab8/mypy-1.15.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:baefc32840a9f00babd83251560e0ae1573e2f9d1b067719479bfb0e987c6357", size = 12494348 },
-    { url = "https://files.pythonhosted.org/packages/83/3e/57bb447f7bbbfaabf1712d96f9df142624a386d98fb026a761532526057e/mypy-1.15.0-cp313-cp313-win_amd64.whl", hash = "sha256:b9378e2c00146c44793c98b8d5a61039a048e31f429fb0eb546d93f4b000bedf", size = 9373648 },
-    { url = "https://files.pythonhosted.org/packages/09/4e/a7d65c7322c510de2c409ff3828b03354a7c43f5a8ed458a7a131b41c7b9/mypy-1.15.0-py3-none-any.whl", hash = "sha256:5469affef548bd1895d86d3bf10ce2b44e33d86923c29e4d675b3e323437ea3e", size = 2221777 },
 ]
 
 [[package]]

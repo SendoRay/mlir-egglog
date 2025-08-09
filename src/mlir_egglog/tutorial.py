@@ -8,8 +8,7 @@ import inspect
 from typing import Callable, Any
 
 from mlir_egglog.python_to_ir import interpret
-from mlir_egglog.egglog_optimizer import extract
-from mlir_egglog.ir_to_mlir import convert_term_to_mlir
+from mlir_egglog.egglog_optimizer import extract, convert_term_to_mlir
 from mlir_egglog.jit_engine import JITEngine
 from mlir_egglog.optimization_rules import basic_math
 
@@ -48,7 +47,7 @@ def show_compilation_pipeline(func: Callable[..., Any], debug: bool = True) -> N
     print("\nSTAGE 3: IR Expression")
     print("-" * 30)
     try:
-        ir_expr = interpret(func, {"np": __import__("numpy")})  # type: ignore
+        ir_expr = interpret(func)  # type: ignore
         print(f"Type: {type(ir_expr).__name__}")
         print(f"Expression: {ir_expr}")
     except Exception as e:
@@ -160,7 +159,7 @@ def compare_with_without_optimization(func: Callable[..., Any]) -> None:
 
     # Without optimization
     print("\nWITHOUT OPTIMIZATION:")
-    ir_expr = interpret(func, {"np": __import__("numpy")})  # type: ignore
+    ir_expr = interpret(func)  # type: ignore
     mlir_without = convert_term_to_mlir(ir_expr, "x")
     print(mlir_without)
 
