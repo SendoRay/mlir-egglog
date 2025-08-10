@@ -67,8 +67,8 @@ from typing import Generator
 
 @ruleset
 def float_rules(x: Term, y: Term, z: Term, i: i64, f: f64):
-    yield rewrite(Add(x, Term.lit_f32(0.0))).to(x)
-    yield rewrite(Add(Term.lit_f32(0.0), x)).to(x)
+    yield rewrite(x + Term.lit_f32(0.0)).to(x)
+    yield rewrite(Term.lit_f32(0.0) + x).to(x)
 
 @kernel("float32(float32)", rewrites=(basic_math, float_rules))
 def custom_fn(x):
