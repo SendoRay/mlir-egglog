@@ -97,7 +97,6 @@ Here's the recommended order to understand the codebase:
 **Transformation Layer** - Code transformation and lowering
 
 5. [`python_to_ir.py`](src/mlir_egglog/python_to_ir.py) - Converts Python functions to the internal IR representation
-6. [`ir_to_mlir.py`](src/mlir_egglog/ir_to_mlir.py) - Transforms internal IR to MLIR representation
 7. [`optimization_rules.py`](src/mlir_egglog/optimization_rules.py) - Rewrite rules
 
 **Optimization Layer** - Optimization and compilation

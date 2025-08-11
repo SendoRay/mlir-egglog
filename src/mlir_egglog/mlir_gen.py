@@ -8,7 +8,6 @@ from egglog import f64, get_callable_args, String, i64
 
 KERNEL_NAME = "kernel_worker"
 F32_TYPE = "f32"
-I32_TYPE = "i32"
 I64_TYPE = "i64"
 KERNEL_INDENT = "    " * 2
 MODULE_INDENT = "  "
@@ -211,7 +210,7 @@ def as_source(
             return f"arith.constant {f:e} : {F32_TYPE}"
     match get_callable_args(expr, ir.Term.lit_i64):
         case (i64(i),):
-            return f"arith.constant {i} : {I32_TYPE}"
+            return f"arith.constant {i} : {I64_TYPE}"
     match get_callable_args(expr, ir.Term.var):
         case (String(var_name),):
             return f"%arg_{var_name}" if var_name in vars else f"%{var_name}"
