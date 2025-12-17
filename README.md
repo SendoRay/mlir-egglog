@@ -4,6 +4,10 @@
 
 # MLIR Egglog
 
+
+
+yaojia   duiying de   float2fix
+
 A toy specializing compiler for NumPy expressions that uses MLIR as a target and can use equality saturation (e-graphs) to do term rewriting on the intermediate representation, enabling extremely precise and composable optimizations of mathematical expressions before lowering to MLIR.
 
 We use the embedded Datalog DSL [`egglog`](https://github.com/egraphs-good/egglog) to express and compose rewrite rules in pure Python and the [`egg`](https://docs.rs/egg/latest/egg/) library to extract optimized syntax trees from the e-graph.
